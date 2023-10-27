@@ -35,7 +35,7 @@ Entity LoadPhysicsScene(const std::shared_ptr<Scene>& scene, const std::string& 
 #pragma endregion
 
 int main() {
-	DemoSetup demoSetup = DemoSetup::Rendering;
+	DemoSetup demoSetup = DemoSetup::Planets;
 	Application::PushLayer<WindowLayer>();
 	Application::PushLayer<EditorLayer>();
 	Application::PushLayer<RenderLayer>();
@@ -216,7 +216,6 @@ void SetupDemoScene(DemoSetup demoSetup, ApplicationInfo& applicationInfo)
 			}
 		}
 	}
-	return;
 	switch (demoSetup)
 	{
 	case DemoSetup::Rendering:
