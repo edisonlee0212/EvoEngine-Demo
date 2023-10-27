@@ -270,7 +270,6 @@ void SetupDemoScene(DemoSetup demoSetup, ApplicationInfo& applicationInfo)
 			}
 		}
 	}
-	return;
 	switch (demoSetup)
 	{
 	case DemoSetup::Rendering:
