@@ -87,7 +87,7 @@ Entity LoadPhysicsScene(const std::shared_ptr<Scene>& scene, const std::string& 
 #pragma endregion
 
 int main() {
-	DemoSetup demoSetup = DemoSetup::Rendering;
+	DemoSetup demoSetup = DemoSetup::Galaxy;
 	Application::PushLayer<WindowLayer>();
 	Application::PushLayer<EditorLayer>();
 	Application::PushLayer<RenderLayer>();
@@ -109,7 +109,7 @@ int main() {
 	const auto rayTracerLayer = Application::GetLayer<RayTracerLayer>();
 	rayTracerLayer->m_showCameraWindow = false;
 	rayTracerLayer->m_showSceneWindow = false;
-	rayTracerLayer->m_showRayTracerWindow = false;
+	rayTracerLayer->m_showRayTracerSettingsWindow = false;
 #endif
 
 	Application::Start();
@@ -276,7 +276,7 @@ void SetupDemoScene(DemoSetup demoSetup, ApplicationInfo& applicationInfo)
 	{
 		applicationInfo.m_applicationName = "Rendering Demo";
 		applicationInfo.m_projectPath = resourceFolderPath / "Example Projects/Rendering/Rendering.eveproj";
-		ProjectManager::SetScenePostLoadActions([&](const std::shared_ptr<Scene>& scene)
+		ProjectManager::SetActionAfterNewScene([&](const std::shared_ptr<Scene>& scene)
 			{
 				scene->m_environment.m_ambientLightIntensity = 0.1f;
 #pragma region Set main camera to correct position and rotation
@@ -361,7 +361,7 @@ void SetupDemoScene(DemoSetup demoSetup, ApplicationInfo& applicationInfo)
 		applicationInfo.m_applicationName = "Galaxy Demo";
 		ClassRegistry::RegisterSystem<StarClusterSystem>("StarClusterSystem");
 		applicationInfo.m_projectPath = resourceFolderPath / "Example Projects/Galaxy/Galaxy.eveproj";
-		ProjectManager::SetScenePostLoadActions([&](const std::shared_ptr<Scene>& scene)
+		ProjectManager::SetActionAfterNewScene([&](const std::shared_ptr<Scene>& scene)
 			{
 				const auto mainCamera = scene->m_mainCamera.Get<Camera>();
 				mainCamera->Resize({ 640, 480 });
@@ -381,7 +381,7 @@ void SetupDemoScene(DemoSetup demoSetup, ApplicationInfo& applicationInfo)
 		ClassRegistry::RegisterPrivateComponent<PlanetTerrain>("PlanetTerrain");
 
 		applicationInfo.m_projectPath = resourceFolderPath / "Example Projects/Planet/Planet.eveproj";
-		ProjectManager::SetScenePostLoadActions([&](const std::shared_ptr<Scene>& scene)
+		ProjectManager::SetActionAfterNewScene([&](const std::shared_ptr<Scene>& scene)
 			{
 #pragma region Preparations
 				const auto mainCamera = scene->m_mainCamera.Get<Camera>();
