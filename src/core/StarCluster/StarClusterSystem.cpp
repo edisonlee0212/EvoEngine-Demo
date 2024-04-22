@@ -233,7 +233,7 @@ void StarClusterSystem::OnInspect(const std::shared_ptr<EditorLayer>& editorLaye
 			}
 		}
 	}
-	if (ImGui::CollapsingHeader("Star removal", ImGuiTreeNodeFlags_DefaultOpen))
+	if (m_starQuery.IsValid() && ImGui::CollapsingHeader("Star removal", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		if (ImGui::Button(("Remove " + std::to_string(amount) + " stars").c_str()))
 			RandomlyRemoveStars(amount);
