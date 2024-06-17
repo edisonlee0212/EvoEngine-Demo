@@ -1,13 +1,11 @@
 #pragma once
 #include <Application.hpp>
 #include <Planet/TerrainConstructionStageBase.hpp>
-using namespace EvoEngine;
-namespace Planet
-{
-class PerlinNoiseStage : public TerrainConstructionStageBase
-{
-  public:
-    void Process(glm::dvec3 point, double previousResult, double &elevation) override;
+using namespace evo_engine;
+namespace planet {
+class PerlinNoiseStage : public TerrainConstructionStageBase {
+ public:
+  void Process(glm::dvec3 point, double previous_result, double& elevation) override;
 };
 
-} // namespace Planet
+}  // namespace planet

@@ -1,108 +1,86 @@
 #include "Planet/PlanetTerrainSystem.hpp"
 #include "ClassRegistry.hpp"
-#include "Scene.hpp"
 #include "RenderLayer.hpp"
-using namespace Planet;
+#include "Scene.hpp"
+using namespace planet;
 
-void PlanetTerrainSystem::Update()
-{
-    auto scene = GetScene();
-    const std::vector<Entity> *const planetTerrainList =
-        scene->UnsafeGetPrivateComponentOwnersList<PlanetTerrain>();
-    if (planetTerrainList == nullptr)
-        return;
+void PlanetTerrainSystem::Update() {
+  const auto scene = GetScene();
+  const std::vector<Entity> *const planet_terrain_list = scene->UnsafeGetPrivateComponentOwnersList<PlanetTerrain>();
+  if (planet_terrain_list == nullptr)
+    return;
 
-    std::mutex meshGenLock;
-    const auto mainCamera = scene->m_mainCamera.Get<Camera>();
-    if (mainCamera)
-    {
-        const auto cameraLtw = scene->GetDataComponent<GlobalTransform>(mainCamera->GetOwner());
-        for (auto i = 0; i < planetTerrainList->size(); i++)
-        {
-            auto planetTerrain = scene->GetOrSetPrivateComponent<PlanetTerrain>(planetTerrainList->at(i)).lock();
-            if (!planetTerrain->IsEnabled())
-                continue;
-            auto &planetInfo = planetTerrain->m_info;
-            auto planetTransform = scene->GetDataComponent<GlobalTransform>(planetTerrain->GetOwner());
-            auto &planetChunks = planetTerrain->m_chunks;
-            // 1. Scan and expand.
-            for (auto &chunk : planetChunks)
-            {
-                // futures.push_back(_PrimaryWorkers->Share([&, this](int id) { CheckLod(meshGenLock, chunk, planetInfo,
-                // planetTransform, cameraLtw); }).share());
-                CheckLod(meshGenLock, chunk, planetInfo, planetTransform, cameraLtw);
-            }
+  if (const auto main_camera = scene->main_camera.Get<Camera>()) {
+    std::mutex mesh_gen_lock;
+    const auto camera_ltw = scene->GetDataComponent<GlobalTransform>(main_camera->GetOwner());
+    for (auto i = 0; i < planet_terrain_list->size(); i++) {
+      const auto planet_terrain = scene->GetOrSetPrivateComponent<PlanetTerrain>(planet_terrain_list->at(i)).lock();
+      if (!planet_terrain->IsEnabled())
+        continue;
+      auto &planet_info = planet_terrain->info_;
+      auto planet_transform = scene->GetDataComponent<GlobalTransform>(planet_terrain->GetOwner());
+      auto &planet_chunks = planet_terrain->chunks_;
+      // 1. Scan and expand.
+      for (auto &chunk : planet_chunks) {
+        // futures.push_back(_PrimaryWorkers->Share([&, this](int id) { CheckLod(meshGenLock, chunk, planetInfo,
+        // planetTransform, cameraLtw); }).share());
+        CheckLod(mesh_gen_lock, chunk, planet_info, planet_transform, camera_ltw);
+      }
 
-            glm::mat4 matrix = glm::scale(
-                glm::translate(glm::mat4_cast(planetTransform.GetRotation()), glm::vec3(planetTransform.GetPosition())),
-                glm::vec3(1.0f));
-            auto material = planetTerrain->m_surfaceMaterial.Get<Material>();
-            if (material)
-            {
-                for (auto j = 0; j < planetChunks.size(); j++)
-                {
-                    RenderChunk(planetChunks[j], material, matrix, true);
-                }
-            }
+      glm::mat4 matrix = glm::scale(
+          glm::translate(glm::mat4_cast(planet_transform.GetRotation()), glm::vec3(planet_transform.GetPosition())),
+          glm::vec3(1.0f));
+      auto material = planet_terrain->surface_material.Get<Material>();
+      if (material) {
+        for (auto j = 0; j < planet_chunks.size(); j++) {
+          RenderChunk(planet_chunks[j], material, matrix, true);
         }
+      }
     }
+  }
 }
 
-void PlanetTerrainSystem::FixedUpdate()
-{
+void PlanetTerrainSystem::FixedUpdate() {
 }
 
-void PlanetTerrainSystem::CheckLod(
-    std::mutex &mutex,
-    std::shared_ptr<TerrainChunk> &chunk,
-    const PlanetInfo &info,
-    const GlobalTransform &planetTransform,
-    const GlobalTransform &cameraTransform)
-{
-    if (glm::distance(
-            glm::dvec3(chunk->ChunkCenterPosition(
-                planetTransform.GetPosition(), info.m_radius, planetTransform.GetRotation())),
-            glm::dvec3(cameraTransform.GetPosition())) <
-        info.m_lodDistance * info.m_radius / glm::pow(2, chunk->m_detailLevel + 1))
-    {
-        if (chunk->m_detailLevel < info.m_maxLodLevel)
-        {
-            chunk->Expand(mutex);
-        }
+void PlanetTerrainSystem::CheckLod(std::mutex &mutex, const std::shared_ptr<TerrainChunk> &chunk,
+                                   const PlanetInfo &info, const GlobalTransform &planet_transform,
+                                   const GlobalTransform &camera_transform) {
+  if (glm::distance(glm::dvec3(chunk->ChunkCenterPosition(planet_transform.GetPosition(), info.radius,
+                                                          planet_transform.GetRotation())),
+                    glm::dvec3(camera_transform.GetPosition())) <
+      info.lod_distance * info.radius / glm::pow(2, chunk->detail_level + 1)) {
+    if (chunk->detail_level < info.max_lod_level) {
+      chunk->Expand(mutex);
     }
-    if (chunk->m_c0)
-        CheckLod(mutex, chunk->m_c0, info, planetTransform, cameraTransform);
-    if (chunk->m_c1)
-        CheckLod(mutex, chunk->m_c1, info, planetTransform, cameraTransform);
-    if (chunk->m_c2)
-        CheckLod(mutex, chunk->m_c2, info, planetTransform, cameraTransform);
-    if (chunk->m_c3)
-        CheckLod(mutex, chunk->m_c3, info, planetTransform, cameraTransform);
-    if (glm::distance(
-            glm::dvec3(chunk->ChunkCenterPosition(
-                planetTransform.GetPosition(), info.m_radius, planetTransform.GetRotation())),
-            glm::dvec3(cameraTransform.GetPosition())) >
-        info.m_lodDistance * info.m_radius / glm::pow(2, chunk->m_detailLevel + 1))
-    {
-        chunk->Collapse();
-    }
+  }
+  if (chunk->c0)
+    CheckLod(mutex, chunk->c0, info, planet_transform, camera_transform);
+  if (chunk->c1)
+    CheckLod(mutex, chunk->c1, info, planet_transform, camera_transform);
+  if (chunk->c2)
+    CheckLod(mutex, chunk->c2, info, planet_transform, camera_transform);
+  if (chunk->c3)
+    CheckLod(mutex, chunk->c3, info, planet_transform, camera_transform);
+  if (glm::distance(glm::dvec3(chunk->ChunkCenterPosition(planet_transform.GetPosition(), info.radius,
+                                                          planet_transform.GetRotation())),
+                    glm::dvec3(camera_transform.GetPosition())) >
+      info.lod_distance * info.radius / glm::pow(2, chunk->detail_level + 1)) {
+    chunk->Collapse();
+  }
 }
 
-void PlanetTerrainSystem::RenderChunk(
-    std::shared_ptr<TerrainChunk> &chunk,
-    const std::shared_ptr<Material> &material,
-    glm::mat4 &matrix,
-    bool receiveShadow) const
-{
-    if (chunk->m_active) {
-        const auto renderLayer = Application::GetLayer<RenderLayer>();
-        renderLayer->DrawMesh(chunk->m_mesh, material, matrix, true);
-    }
-    if (chunk->m_childrenActive)
-    {
-        RenderChunk(chunk->m_c0, material, matrix, receiveShadow);
-        RenderChunk(chunk->m_c1, material, matrix, receiveShadow);
-        RenderChunk(chunk->m_c2, material, matrix, receiveShadow);
-        RenderChunk(chunk->m_c3, material, matrix, receiveShadow);
-    }
+void PlanetTerrainSystem::RenderChunk(const std::shared_ptr<TerrainChunk> &chunk,
+                                      const std::shared_ptr<Material> &material, glm::mat4 &matrix,
+                                      bool receive_shadow) {
+  if (chunk->active) {
+    const auto render_layer = Application::GetLayer<RenderLayer>();
+    render_layer->DrawMesh(chunk->mesh, material, matrix, true);
+  }
+  if (chunk->children_active) {
+    RenderChunk(chunk->c0, material, matrix, receive_shadow);
+    RenderChunk(chunk->c1, material, matrix, receive_shadow);
+    RenderChunk(chunk->c2, material, matrix, receive_shadow);
+    RenderChunk(chunk->c3, material, matrix, receive_shadow);
+  }
 }

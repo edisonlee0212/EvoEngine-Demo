@@ -8,16 +8,22 @@ project(
 option(BUILD_WITH_RAYTRACER "Build with Ray Tracer" ON)
 option(BUILD_WITH_PHYSICS "Build with Physics" ON)
 
+# ------------------------------------------------------------------
+# Build types
+# ------------------------------------------------------------------
 # Set a default build type if none was specified
-set(default_build_type "Release")
+set(default_build_type "RelWithDebInfo")
 
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 	message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
 	set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
 			STRING "Choose the type of build." FORCE)
-	# Set the possible values of build type for cmake-gui
-	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-			"Debug" "Release")
+endif ()
+
+if (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease" OR CMAKE_BUILD_TYPE MATCHES "^[Rr]lWithDebInfo")
+	set(DEBUG_STATUS NDEBUG)
+elseif (CMAKE_BUILD_TYPE MATCHES "[Dd]ebug")
+	set(DEBUG_STATUS _DEBUG)
 endif ()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -145,13 +151,3 @@ if (BUILD_WITH_PHYSICS)
 		BUILD_WITH_PHYSICS
 		)
 endif ()
-
-# ------------------------------------------------------------------
-# Copy Internal resources
-# ------------------------------------------------------------------
-add_custom_command(TARGET evoengine_demo_app POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_directory
-		${CMAKE_CURRENT_SOURCE_DIR}/src/Internals
-		${CMAKE_BINARY_DIR})
-
-file(COPY src/app/imgui.ini DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

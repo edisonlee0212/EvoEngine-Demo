@@ -1,109 +1,98 @@
 #include "Planet/PlanetTerrain.hpp"
+#include "EditorLayer.hpp"
 #include "Planet/PlanetTerrainSystem.hpp"
 #include "yaml-cpp/yaml.h"
-#include "EditorLayer.hpp"
-void Planet::PlanetTerrain::Serialize(YAML::Emitter &out)
-{
-    out << YAML::Key << "PlanetInfo";
-    out << YAML::BeginMap;
-    out << YAML::Key << "MaxLodLevel" << YAML::Value << m_info.m_maxLodLevel;
-    out << YAML::Key << "LodDistance" << YAML::Value << m_info.m_lodDistance;
-    out << YAML::Key << "Radius" << YAML::Value << m_info.m_radius;
-    out << YAML::Key << "Index" << YAML::Value << m_info.m_index;
-    out << YAML::Key << "Resolution" << YAML::Value << m_info.m_resolution;
-    out << YAML::EndMap;
+void planet::PlanetTerrain::Serialize(YAML::Emitter &out) const {
+  out << YAML::Key << "planet_info";
+  out << YAML::BeginMap;
+  out << YAML::Key << "max_lod_level" << YAML::Value << info_.max_lod_level;
+  out << YAML::Key << "lod_distance" << YAML::Value << info_.lod_distance;
+  out << YAML::Key << "radius" << YAML::Value << info_.radius;
+  out << YAML::Key << "index" << YAML::Value << info_.index;
+  out << YAML::Key << "resolution" << YAML::Value << info_.resolution;
+  out << YAML::EndMap;
 
-    m_surfaceMaterial.Save("m_surfaceMaterial", out);
+  surface_material.Save("surface_material", out);
 }
 
-void Planet::PlanetTerrain::Deserialize(const YAML::Node &out)
-{
-    auto info = out["PlanetInfo"];
-    PlanetInfo planetInfo;
-    planetInfo.m_maxLodLevel = info["MaxLodLevel"].as<unsigned>();
-    planetInfo.m_lodDistance = info["LodDistance"].as<double>();
-    planetInfo.m_radius = info["Radius"].as<double>();
-    planetInfo.m_index = info["Index"].as<unsigned>();
-    planetInfo.m_resolution = info["Resolution"].as<unsigned>();
-    SetPlanetInfo(planetInfo);
+void planet::PlanetTerrain::Deserialize(const YAML::Node &in) {
+  auto info = in["planet_info"];
+  PlanetInfo planet_info;
+  planet_info.max_lod_level = info["max_lod_level"].as<unsigned>();
+  planet_info.lod_distance = info["lod_distance"].as<double>();
+  planet_info.radius = info["radius"].as<double>();
+  planet_info.index = info["index"].as<unsigned>();
+  planet_info.resolution = info["resolution"].as<unsigned>();
+  SetPlanetInfo(planet_info);
 
-    m_surfaceMaterial.Load("m_surfaceMaterial", out);
+  surface_material.Load("surface_material", in);
 }
-void Planet::PlanetTerrain::Init()
-{
-    if(m_initialized) return;
-    m_sharedVertices = std::vector<Vertex>();
-    size_t resolution = m_info.m_resolution;
-    m_sharedVertices.resize(resolution * resolution);
-    m_sharedTriangles = std::vector<unsigned>();
-    m_sharedTriangles.resize((resolution - 1) * (resolution - 1) * 6);
+void planet::PlanetTerrain::Init() {
+  if (initialized_)
+    return;
+  shared_vertices_ = std::vector<Vertex>();
+  size_t resolution = info_.resolution;
+  shared_vertices_.resize(resolution * resolution);
+  shared_triangles_ = std::vector<unsigned>();
+  shared_triangles_.resize((resolution - 1) * (resolution - 1) * 6);
 
-    size_t triIndex = 0;
-    for (size_t y = 0; y < resolution; y++)
-    {
-        for (size_t x = 0; x < resolution; x++)
-        {
-            size_t i = x + y * resolution;
-            m_sharedVertices[i].m_texCoord =
-                glm::vec2(static_cast<float>(x) / (resolution - 1), static_cast<float>(y) / (resolution - 1));
-            if (x != resolution - 1 && y != resolution - 1)
-            {
-                m_sharedTriangles[triIndex] = i;
-                m_sharedTriangles[triIndex + 1] = i + resolution + 1;
-                m_sharedTriangles[triIndex + 2] = i + resolution;
+  size_t tri_index = 0;
+  for (size_t y = 0; y < resolution; y++) {
+    for (size_t x = 0; x < resolution; x++) {
+      size_t i = x + y * resolution;
+      shared_vertices_[i].tex_coord =
+          glm::vec2(static_cast<float>(x) / (resolution - 1), static_cast<float>(y) / (resolution - 1));
+      if (x != resolution - 1 && y != resolution - 1) {
+        shared_triangles_[tri_index] = i;
+        shared_triangles_[tri_index + 1] = i + resolution + 1;
+        shared_triangles_[tri_index + 2] = i + resolution;
 
-                m_sharedTriangles[triIndex + 3] = i;
-                m_sharedTriangles[triIndex + 4] = i + 1;
-                m_sharedTriangles[triIndex + 5] = i + resolution + 1;
-                triIndex += 6;
-            }
-        }
+        shared_triangles_[tri_index + 3] = i;
+        shared_triangles_[tri_index + 4] = i + 1;
+        shared_triangles_[tri_index + 5] = i + resolution + 1;
+        tri_index += 6;
+      }
     }
-    const auto scene = Application::GetActiveScene();
-    auto self = scene->GetOrSetPrivateComponent<PlanetTerrain>(GetOwner()).lock();
-    m_chunks.clear();
-    m_chunks.push_back(
-        std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(1, 0, 0)));
-    m_chunks.push_back(
-        std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, 1, 0)));
-    m_chunks.push_back(
-        std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, 0, 1)));
-    m_chunks.push_back(
-        std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(-1, 0, 0)));
-    m_chunks.push_back(
-        std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, -1, 0)));
-    m_chunks.push_back(
-        std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, 0, -1)));
+  }
+  const auto scene = Application::GetActiveScene();
+  auto self = scene->GetOrSetPrivateComponent<PlanetTerrain>(GetOwner()).lock();
+  chunks_.clear();
+  chunks_.push_back(
+      std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(1, 0, 0)));
+  chunks_.push_back(
+      std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, 1, 0)));
+  chunks_.push_back(
+      std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, 0, 1)));
+  chunks_.push_back(
+      std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(-1, 0, 0)));
+  chunks_.push_back(
+      std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, -1, 0)));
+  chunks_.push_back(
+      std::make_shared<TerrainChunk>(self, nullptr, 0, glm::ivec2(0), ChunkDirection::Root, glm::dvec3(0, 0, -1)));
 
-    std::mutex m;
-    for (auto &chunk : m_chunks)
-    {
-        chunk->GenerateTerrain(m, chunk);
-        chunk->m_active = true;
-    }
-    m_initialized = true;
+  std::mutex m;
+  for (auto &chunk : chunks_) {
+    chunk->GenerateTerrain(m, chunk);
+    chunk->active = true;
+  }
+  initialized_ = true;
 }
 
-void Planet::PlanetTerrain::OnInspect(const std::shared_ptr<EditorLayer>& editorLayer)
-{
-    editorLayer->DragAndDropButton<Material>(m_surfaceMaterial, "Material");
+bool planet::PlanetTerrain::OnInspect(const std::shared_ptr<EditorLayer> &editor_layer) {
+  return editor_layer->DragAndDropButton<Material>(surface_material, "Material");
 }
-void Planet::PlanetTerrain::PostCloneAction(const std::shared_ptr<IPrivateComponent> &target)
-{
-    m_info = std::static_pointer_cast<Planet::PlanetTerrain>(target)->m_info;
-    m_initialized = false;
+void planet::PlanetTerrain::PostCloneAction(const std::shared_ptr<IPrivateComponent> &target) {
+  info_ = std::static_pointer_cast<planet::PlanetTerrain>(target)->info_;
+  initialized_ = false;
 }
-void Planet::PlanetTerrain::Start()
-{
-    Init();
+void planet::PlanetTerrain::Start() {
+  Init();
 }
-void Planet::PlanetTerrain::SetPlanetInfo(const PlanetInfo &planetInfo)
-{
-    m_info = planetInfo;
-    m_initialized = false;
-    Init();
+void planet::PlanetTerrain::SetPlanetInfo(const PlanetInfo &planet_info) {
+  info_ = planet_info;
+  initialized_ = false;
+  Init();
 }
-void Planet::PlanetTerrain::CollectAssetRef(std::vector<AssetRef> &list)
-{
-    list.push_back(m_surfaceMaterial);
+void planet::PlanetTerrain::CollectAssetRef(std::vector<AssetRef> &list) {
+  list.push_back(surface_material);
 }
