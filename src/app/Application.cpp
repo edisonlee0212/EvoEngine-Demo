@@ -249,7 +249,7 @@ void SetupDemoScene(DemoSetup demo_setup, ApplicationInfo& application_info) {
 #pragma endregion
 
 #ifdef BUILD_WITH_PHYSICS
-        LoadScene(scene, "Rendering Demo", true);
+        LoadScene(scene, "Rendering Demo", false);
         const auto physics_demo = LoadPhysicsScene(scene, "Physics Demo");
         Transform physics_demo_transform;
         physics_demo_transform.SetPosition(glm::vec3(-0.5f, -0.5f, -1.0f));
